@@ -7,7 +7,7 @@ export interface Plant {
   lastHarvested: Date;
 }
 
-export const plants: Plant[] = [
+export const initialPlants: Plant[] = [
   {
     id: 1,
     name: "Pepper Plant #1",
