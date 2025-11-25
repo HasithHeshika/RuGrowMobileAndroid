@@ -2,19 +2,16 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Allow any authenticated user to read the list of plants and their data.
+    // This is necessary for the main dashboard to display plant information.
+    match /plants/{plantId} {
+      allow read: if request.auth != null;
 
-    // Allow read access to the entire database for any user,
-    // authenticated or not. This is to ensure the app can always
-    // fetch the data it needs to display.
-    match /{document=**} {
-      allow read: if true;
-    }
-
-    // Restrict write access (create, update, delete) to only
-    // allow users who are signed in (including anonymous users).
-    // This rule is applied to the 'plants' collection and its subcollections.
-    match /plants/{plantId=**} {
-      allow write: if request.auth != null;
+      // Allow any authenticated user to create new sensor data or watering events.
+      // This allows the ESP32 and the web app to write data.
+      match /{allPaths=**} {
+        allow write: if request.auth != null;
+      }
     }
   }
 }
