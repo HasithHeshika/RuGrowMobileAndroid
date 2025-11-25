@@ -1,59 +1,21 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { useMemo } from "react";
 import { PlantDashboard } from "@/components/plant-dashboard";
 import type { Plant } from "@/lib/types";
-import { Sprout, PlusCircle } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { AddPlantForm } from "@/components/add-plant-form";
-import { Button } from "@/components/ui/button";
+import { Sprout } from "lucide-react";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
-import { collection, serverTimestamp } from "firebase/firestore";
+import { collection } from "firebase/firestore";
 
 export default function Web() {
   const firestore = useFirestore();
   const plantsCollection = useMemoFirebase(() => firestore ? collection(firestore, 'plants') : null, [firestore]);
   const { data: plants, isLoading } = useCollection<Plant>(plantsCollection);
 
-  const [selectedPlantId, setSelectedPlantId] = useState<string | undefined>(undefined);
-  const [isAddPlantDialogOpen, setIsAddPlantDialogOpen] = useState(false);
-
-  const selectedPlant = useMemo(() => {
-    if (!plants || !selectedPlantId) return undefined;
-    return plants.find((p) => p.id === selectedPlantId);
-  }, [plants, selectedPlantId]);
-
-  useState(() => {
-    if (plants && plants.length > 0 && !selectedPlantId) {
-      setSelectedPlantId(plants[0].id);
-    }
-  });
-
-  const handleAddPlant = (newPlant: Omit<Plant, "id" | "datePlanted">) => {
-    if (!plantsCollection) return;
-    const plantWithTimestamp = { ...newPlant, datePlanted: serverTimestamp() };
-    addDocumentNonBlocking(plantsCollection, plantWithTimestamp)
-      .then((docRef) => {
-        if (docRef) {
-          setSelectedPlantId(docRef.id);
-        }
-      });
-    setIsAddPlantDialogOpen(false);
-  };
+  const plant = useMemo(() => {
+    if (!plants || plants.length === 0) return undefined;
+    return plants[0];
+  }, [plants]);
 
   if (isLoading) {
     return (
@@ -77,69 +39,17 @@ export default function Web() {
           <p className="text-muted-foreground">Rextro 2025 Exhibition Demo</p>
         </header>
 
-        <main className="grid md:grid-cols-2 gap-8">
-          <div className="space-y-4">
-            <div>
-              <label
-                htmlFor="plant-select"
-                className="block text-sm font-medium text-muted-foreground mb-2"
-              >
-                Select Plant
-              </label>
-              <Select
-                onValueChange={setSelectedPlantId}
-                value={selectedPlantId}
-              >
-                <SelectTrigger id="plant-select" className="w-full">
-                  <SelectValue placeholder="Select a plant..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {plants?.map((plant) => (
-                    <SelectItem key={plant.id} value={plant.id}>
-                      {plant.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+        <main className="mt-8">
+          {plant ? (
+            <PlantDashboard plant={plant} />
+          ) : (
+            <div className="text-center p-12 border-dashed border-2 rounded-lg">
+              <p className="text-muted-foreground">No plant data found.</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Please add a plant to your Firestore 'plants' collection to see the dashboard.
+              </p>
             </div>
-
-            <Dialog
-              open={isAddPlantDialogOpen}
-              onOpenChange={setIsAddPlantDialogOpen}
-            >
-              <DialogTrigger asChild>
-                <Button variant="outline" className="w-full">
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Add New Plant
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                  <DialogTitle>Add a New Plant</DialogTitle>
-                </DialogHeader>
-                <AddPlantForm
-                  onFormSubmit={handleAddPlant}
-                  onCancel={() => setIsAddPlantDialogOpen(false)}
-                />
-              </DialogContent>
-            </Dialog>
-            
-            <div>
-              <h2 className="text-xl font-bold text-primary mb-4">All Plants</h2>
-              <div className="space-y-2">
-                {plants?.map(plant => (
-                  <div key={plant.id} className="p-2 border rounded-md cursor-pointer hover:bg-muted" onClick={() => setSelectedPlantId(plant.id)}>
-                    {plant.name}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-          </div>
-
-          <div>
-            {selectedPlant && <PlantDashboard plant={selectedPlant} />}
-          </div>
+          )}
         </main>
 
         <footer className="text-center mt-10 text-xs text-muted-foreground">
