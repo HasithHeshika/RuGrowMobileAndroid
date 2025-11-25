@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo } from "react";
@@ -5,10 +6,15 @@ import { PlantDashboard } from "@/components/plant-dashboard";
 import type { Plant } from "@/lib/types";
 import { Sprout } from "lucide-react";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection } from "firebase/firestore";
+import { collection, serverTimestamp } from "firebase/firestore";
+import { Button } from "@/components/ui/button";
+import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { useToast } from "@/hooks/use-toast";
+
 
 export default function Web() {
   const firestore = useFirestore();
+  const { toast } = useToast();
   const plantsCollection = useMemoFirebase(() => firestore ? collection(firestore, 'plants') : null, [firestore]);
   const { data: plants, isLoading } = useCollection<Plant>(plantsCollection);
 
@@ -16,6 +22,19 @@ export default function Web() {
     if (!plants || plants.length === 0) return undefined;
     return plants[0];
   }, [plants]);
+
+  const handleCreatePlant = () => {
+    if (!plantsCollection) return;
+    addDocumentNonBlocking(plantsCollection, {
+      name: "My Pepper Plant",
+      species: "Capsicum annuum",
+      datePlanted: serverTimestamp(),
+    });
+    toast({
+      title: "Plant Created!",
+      description: "Your first plant has been added to Firestore.",
+    });
+  };
 
   if (isLoading) {
     return (
@@ -43,11 +62,12 @@ export default function Web() {
           {plant ? (
             <PlantDashboard plant={plant} />
           ) : (
-            <div className="text-center p-12 border-dashed border-2 rounded-lg">
-              <p className="text-muted-foreground">No plant data found.</p>
+            <div className="text-center p-12 border-dashed border-2 rounded-lg space-y-4">
+              <p className="text-muted-foreground">No plant data found in Firestore.</p>
               <p className="text-sm text-muted-foreground mt-2">
-                Please add a plant to your Firestore 'plants' collection to see the dashboard.
+                Click the button to create your first plant document.
               </p>
+              <Button onClick={handleCreatePlant}>Create First Plant</Button>
             </div>
           )}
         </main>
