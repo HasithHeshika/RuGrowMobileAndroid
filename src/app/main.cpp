@@ -267,7 +267,7 @@ void loop() {
         
         Serial.println("📤 Sending data to Cloud Firestore...");
 
-        // Parent document path in the format of "projects/PROJECT_ID/databases/(default)/documents"
+        // Parent document path in the format of "plants/{plantId}"
         String documentPath = "plants/" + String(PLANT_ID);
 
         // The collection id for subcollection
@@ -289,7 +289,7 @@ void loop() {
         
         // Create a new document in the subcollection.
         // The document ID will be assigned automatically by Firestore if the document ID is left empty.
-        if (Firebase.Firestore.createDocument(&fbdo, FIREBASE_PROJECT_ID, "", documentPath.c_str(), "", content.raw())) {
+        if (Firebase.Firestore.createDocument(&fbdo, FIREBASE_PROJECT_ID, "" /* databaseId */, documentPath.c_str(), collectionId.c_str(), content.raw())) {
             Serial.print("   ✓ Firestore document created successfully at path: ");
             Serial.println(fbdo.payload().c_str());
         } else {
@@ -300,5 +300,3 @@ void loop() {
     }
   }
 }
-
-    
