@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Select,
   SelectContent,
@@ -9,8 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PlantDashboard } from "@/components/plant-dashboard";
-import type { Plant } from "@/lib/data";
-import { initialPlants } from "@/lib/data";
+import type { Plant } from "@/lib/types";
 import { Sprout, PlusCircle } from "lucide-react";
 import {
   Dialog,
@@ -21,23 +20,49 @@ import {
 } from "@/components/ui/dialog";
 import { AddPlantForm } from "@/components/add-plant-form";
 import { Button } from "@/components/ui/button";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { collection, serverTimestamp } from "firebase/firestore";
 
 export default function Web() {
-  const [plants, setPlants] = useState<Plant[]>(initialPlants);
-  const [selectedPlantId, setSelectedPlantId] = useState<string>(
-    plants[0].id.toString()
-  );
+  const firestore = useFirestore();
+  const plantsCollection = useMemoFirebase(() => firestore ? collection(firestore, 'plants') : null, [firestore]);
+  const { data: plants, isLoading } = useCollection<Plant>(plantsCollection);
+
+  const [selectedPlantId, setSelectedPlantId] = useState<string | undefined>(undefined);
   const [isAddPlantDialogOpen, setIsAddPlantDialogOpen] = useState(false);
 
-  const selectedPlant = plants.find((p) => p.id.toString() === selectedPlantId);
+  const selectedPlant = useMemo(() => {
+    if (!plants || !selectedPlantId) return undefined;
+    return plants.find((p) => p.id === selectedPlantId);
+  }, [plants, selectedPlantId]);
 
-  const handleAddPlant = (newPlant: Omit<Plant, "id">) => {
-    const newId = Math.max(...plants.map((p) => p.id)) + 1;
-    const plantWithId = { ...newPlant, id: newId };
-    setPlants((prevPlants) => [...prevPlants, plantWithId]);
-    setSelectedPlantId(plantWithId.id.toString());
+  useState(() => {
+    if (plants && plants.length > 0 && !selectedPlantId) {
+      setSelectedPlantId(plants[0].id);
+    }
+  });
+
+  const handleAddPlant = (newPlant: Omit<Plant, "id" | "datePlanted">) => {
+    if (!plantsCollection) return;
+    const plantWithTimestamp = { ...newPlant, datePlanted: serverTimestamp() };
+    addDocumentNonBlocking(plantsCollection, plantWithTimestamp)
+      .then((docRef) => {
+        if (docRef) {
+          setSelectedPlantId(docRef.id);
+        }
+      });
     setIsAddPlantDialogOpen(false);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center bg-background min-h-screen p-4 font-body text-foreground">
+        <Sprout className="w-12 h-12 text-primary animate-pulse" />
+        <p className="text-muted-foreground mt-4">Loading Plant Data...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center bg-background min-h-screen p-4 font-body text-foreground">
@@ -69,8 +94,8 @@ export default function Web() {
                   <SelectValue placeholder="Select a plant..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {plants.map((plant) => (
-                    <SelectItem key={plant.id} value={plant.id.toString()}>
+                  {plants?.map((plant) => (
+                    <SelectItem key={plant.id} value={plant.id}>
                       {plant.name}
                     </SelectItem>
                   ))}
@@ -102,8 +127,8 @@ export default function Web() {
             <div>
               <h2 className="text-xl font-bold text-primary mb-4">All Plants</h2>
               <div className="space-y-2">
-                {plants.map(plant => (
-                  <div key={plant.id} className="p-2 border rounded-md cursor-pointer hover:bg-muted" onClick={() => setSelectedPlantId(plant.id.toString())}>
+                {plants?.map(plant => (
+                  <div key={plant.id} className="p-2 border rounded-md cursor-pointer hover:bg-muted" onClick={() => setSelectedPlantId(plant.id)}>
                     {plant.name}
                   </div>
                 ))}

@@ -13,33 +13,16 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
-import { Calendar } from "@/components/ui/calendar";
-import { cn } from "@/lib/utils";
-import { format } from "date-fns";
-import type { Plant } from "@/lib/data";
+import type { Plant } from "@/lib/types";
+
 
 const formSchema = z.object({
   name: z.string().min(1, "Plant name is required"),
-  temperature: z.coerce.number().min(0, "Temperature must be positive"),
-  soilMoisture: z.coerce
-    .number()
-    .min(0, "Soil moisture must be positive")
-    .max(100, "Soil moisture cannot exceed 100"),
-  lastWatered: z.date(),
-  lastHarvested: z.date(),
-  absoluteHumidity: z.coerce.number().min(0, "Absolute humidity must be positive"),
-  dewPoint: z.coerce.number(),
-  relativeHumidity: z.coerce.number().min(0, "Relative humidity must be positive").max(100, "Relative humidity cannot exceed 100"),
+  species: z.string().min(1, "Plant species is required"),
 });
 
 type AddPlantFormProps = {
-  onFormSubmit: (values: Omit<Plant, "id">) => void;
+  onFormSubmit: (values: Omit<Plant, "id" | "datePlanted">) => void;
   onCancel: () => void;
 };
 
@@ -48,13 +31,7 @@ export function AddPlantForm({ onFormSubmit, onCancel }: AddPlantFormProps) {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
-      temperature: 25,
-      soilMoisture: 70,
-      lastWatered: new Date(),
-      lastHarvested: new Date(),
-      absoluteHumidity: 10,
-      dewPoint: 12,
-      relativeHumidity: 55,
+      species: "Capsicum annuum",
     },
   });
 
@@ -79,145 +56,15 @@ export function AddPlantForm({ onFormSubmit, onCancel }: AddPlantFormProps) {
             </FormItem>
           )}
         />
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="temperature"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Temperature (°C)</FormLabel>
-                <FormControl>
-                  <Input type="number" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="soilMoisture"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Soil Moisture (%)</FormLabel>
-                <FormControl>
-                  <Input type="number" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-           <FormField
-            control={form.control}
-            name="relativeHumidity"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Relative Humidity (%)</FormLabel>
-                <FormControl>
-                  <Input type="number" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-           <FormField
-            control={form.control}
-            name="absoluteHumidity"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Absolute Humidity (g/m³)</FormLabel>
-                <FormControl>
-                  <Input type="number" step="0.1" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-           <FormField
-            control={form.control}
-            name="dewPoint"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Dew Point (°C)</FormLabel>
-                <FormControl>
-                  <Input type="number" step="0.1" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
         <FormField
           control={form.control}
-          name="lastWatered"
+          name="species"
           render={({ field }) => (
-            <FormItem className="flex flex-col">
-              <FormLabel>Last Watered</FormLabel>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <FormControl>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-full pl-3 text-left font-normal",
-                        !field.value && "text-muted-foreground"
-                      )}
-                    >
-                      {field.value ? (
-                        format(field.value, "PPP")
-                      ) : (
-                        <span>Pick a date</span>
-                      )}
-                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                    </Button>
-                  </FormControl>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={field.value}
-                    onSelect={field.onChange}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="lastHarvested"
-          render={({ field }) => (
-            <FormItem className="flex flex-col">
-              <FormLabel>Last Harvested</FormLabel>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <FormControl>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-full pl-3 text-left font-normal",
-                        !field.value && "text-muted-foreground"
-                      )}
-                    >
-                      {field.value ? (
-                        format(field.value, "PPP")
-                      ) : (
-                        <span>Pick a date</span>
-                      )}
-                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                    </Button>
-                  </FormControl>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={field.value}
-                    onSelect={field.onChange}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+            <FormItem>
+              <FormLabel>Plant Species</FormLabel>
+              <FormControl>
+                <Input placeholder="e.g., Capsicum annuum" {...field} />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
