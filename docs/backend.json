@@ -1,0 +1,220 @@
+{
+  "entities": {
+    "Plant": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Plant",
+      "type": "object",
+      "description": "Represents a single plant in the RuGrow system.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Plant entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the plant (e.g., 'Pepper Plant 1')."
+        },
+        "species": {
+          "type": "string",
+          "description": "The species of the plant (e.g., 'Capsicum annuum')."
+        },
+        "datePlanted": {
+          "type": "string",
+          "description": "The date and time when the plant was planted.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "species",
+        "datePlanted"
+      ]
+    },
+    "EnvironmentData": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "EnvironmentData",
+      "type": "object",
+      "description": "Represents real-time environmental data for a specific plant.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the EnvironmentData entity."
+        },
+        "plantId": {
+          "type": "string",
+          "description": "Reference to Plant. (Relationship: Plant 1:N EnvironmentData)"
+        },
+        "temperature": {
+          "type": "number",
+          "description": "The temperature in Celsius."
+        },
+        "soilMoisture": {
+          "type": "number",
+          "description": "The soil moisture level (e.g., percentage or arbitrary scale)."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The date and time when the data was recorded.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "plantId",
+        "temperature",
+        "soilMoisture",
+        "timestamp"
+      ]
+    },
+    "WateringEvent": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "WateringEvent",
+      "type": "object",
+      "description": "Represents a watering event for a specific plant.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the WateringEvent entity."
+        },
+        "plantId": {
+          "type": "string",
+          "description": "Reference to Plant. (Relationship: Plant 1:N WateringEvent)"
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The date and time when the plant was watered.",
+          "format": "date-time"
+        },
+        "waterAmount": {
+          "type": "number",
+          "description": "The amount of water used in milliliters."
+        }
+      },
+      "required": [
+        "id",
+        "plantId",
+        "timestamp",
+        "waterAmount"
+      ]
+    },
+    "HarvestingEvent": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "HarvestingEvent",
+      "type": "object",
+      "description": "Represents a harvesting event for a specific plant.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the HarvestingEvent entity."
+        },
+        "plantId": {
+          "type": "string",
+          "description": "Reference to Plant. (Relationship: Plant 1:N HarvestingEvent)"
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The date and time when the plant was harvested.",
+          "format": "date-time"
+        },
+        "fruitCount": {
+          "type": "number",
+          "description": "The number of fruits harvested."
+        }
+      },
+      "required": [
+        "id",
+        "plantId",
+        "timestamp",
+        "fruitCount"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/plants/{plantId}",
+        "definition": {
+          "entityName": "Plant",
+          "schema": {
+            "$ref": "#/backend/entities/Plant"
+          },
+          "description": "Stores static plant information. No specific authorization implemented, since anonymous auth provider is used.",
+          "params": [
+            {
+              "name": "plantId",
+              "description": "The unique identifier of the plant."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/plants/{plantId}/environment_data/{environmentDataId}",
+        "definition": {
+          "entityName": "EnvironmentData",
+          "schema": {
+            "$ref": "#/backend/entities/EnvironmentData"
+          },
+          "description": "Stores real-time environment data for each plant. No specific authorization implemented, since anonymous auth provider is used.",
+          "params": [
+            {
+              "name": "plantId",
+              "description": "The unique identifier of the plant."
+            },
+            {
+              "name": "environmentDataId",
+              "description": "The unique identifier of the environment data record."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/plants/{plantId}/watering_events/{wateringEventId}",
+        "definition": {
+          "entityName": "WateringEvent",
+          "schema": {
+            "$ref": "#/backend/entities/WateringEvent"
+          },
+          "description": "Stores watering event history for each plant. No specific authorization implemented, since anonymous auth provider is used.",
+          "params": [
+            {
+              "name": "plantId",
+              "description": "The unique identifier of the plant."
+            },
+            {
+              "name": "wateringEventId",
+              "description": "The unique identifier of the watering event."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/plants/{plantId}/harvesting_events/{harvestingEventId}",
+        "definition": {
+          "entityName": "HarvestingEvent",
+          "schema": {
+            "$ref": "#/backend/entities/HarvestingEvent"
+          },
+          "description": "Stores harvesting event history for each plant. No specific authorization implemented, since anonymous auth provider is used.",
+          "params": [
+            {
+              "name": "plantId",
+              "description": "The unique identifier of the plant."
+            },
+            {
+              "name": "harvestingEventId",
+              "description": "The unique identifier of the harvesting event."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to support the RuGrow application's real-time data and manual control requirements while adhering to the core design principles of Authorization Independence, Clarity of Intent, DBAC (Database-Based Access Control), QAPs (Rules are not Filters), and Invariants.\n\n*   **Authorization Independence:** Since the application uses anonymous auth, no authorization checks are needed. However, if authentication were to be enabled (e.g., to limit actions or view history), we would denormalize plant ownership, user roles, and any other relevant authorization data directly into the `EnvironmentData`, `WateringEvent`, and `HarvestingEvent` documents. This would avoid using `get()` calls in security rules, allowing for atomic operations and easier debugging.\n*   **Clarity of Intent:** The structure clearly separates different entities (Plants, EnvironmentData, WateringEvents, HarvestingEvents) into distinct collections, making the purpose of each collection immediately obvious.\n*   **DBAC (No Custom Claims):** While not currently in use, if role-based access control was implemented, roles would be managed via existence checks in dedicated collections (e.g., `/roles_admin/{uid}`) instead of relying on custom claims.\n*   **QAPs (Rules are not Filters):** The structure uses structural segregation. Each collection contains documents with a homogenous security posture.\n*   **Invariants:** The structure supports integrity by using server timestamps and, if ownership was a factor, it would enforce consistent ownership across related documents (e.g., all events related to a plant would have the same owner).\n\n**Realtime Database Integration:**  The user mentioned a Realtime Database integration. Since the data is migrated to Firestore, and this application relies in Firestore, the data stored on Realtime Database is not considered for the design of this app.\n\n**Specifics:**\n\n*   `/plants/{plantId}`: Stores static plant information.\n*   `/plants/{plantId}/environment_data/{environmentDataId}`: Stores real-time environmental data for each plant.\n*   `/plants/{plantId}/watering_events/{wateringEventId}`: Stores watering event history for each plant.\n*   `/plants/{plantId}/harvesting_events/{harvestingEventId}`: Stores harvesting event history for each plant."
+  }
+}

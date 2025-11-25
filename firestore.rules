@@ -1,0 +1,124 @@
+/**
+ * Core Philosophy: This ruleset establishes a public-access model tailored for an application
+ * that uses anonymous authentication. The primary goal is to allow any user (including
+ * those who are not signed in) to read data, facilitating real-time data display.
+ * Write operations (creating, updating, deleting) are restricted to users who have at least
+ * completed an anonymous sign-in, providing a baseline of security against unauthenticated bots
+ * while maintaining a low barrier to entry for legitimate application clients.
+ *
+ * Data Structure: The data is organized hierarchically around a central 'plants' collection.
+ * Each document in `/plants/{plantId}` acts as a parent for its related time-series
+ * data, which is stored in separate subcollections (`environment_data`, `watering_events`,
+ * `harvesting_events`). This structure ensures that queries for a specific plant's
+ * event history are efficient and scalable.
+ *
+ * Key Security Decisions:
+ * - Public Reads: All data is publicly readable (`get`, `list`) to support the app's
+ *   real-time data display features for any visitor.
+ * - Authenticated Writes: All write operations (`create`, `update`, `delete`) require
+ *   the user to be authenticated, even if only anonymously. This prevents completely
+ *   unauthenticated clients from modifying data.
+ * - Relational Integrity: On creation, documents in subcollections must have a 'plantId'
+ *   field that matches the parent document's ID in the path. This 'plantId' field is
+ *   enforced as immutable on update, preserving the data's relational structure.
+ * - Prototyping Flexibility: In line with a prototyping model, these rules do not
+ *   validate the specific shape or data types of documents, focusing strictly on
+ *   authorization and relational integrity.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ------------------------------------------------------------------------
+    // Helper Functions
+    // ------------------------------------------------------------------------
+
+    /**
+     * Returns true if the user has an active session (including anonymous).
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Ensures that a new child document has a `plantId` field that
+     * correctly references its parent document in the path.
+     * @param plantId The ID of the parent plant from the path.
+     */
+    function isCreatingConsistentChild(plantId) {
+      return request.resource.data.plantId == plantId;
+    }
+
+    /**
+     * Enforces immutability of the `plantId` field on a child document
+     * during an update operation, preventing it from being re-parented.
+     */
+    function isUpdatingChild() {
+      return request.resource.data.plantId == resource.data.plantId;
+    }
+
+    // ------------------------------------------------------------------------
+    // Collection Rules
+    // ------------------------------------------------------------------------
+
+    /**
+     * @description Controls access to the top-level collection of plants.
+     * @path /plants/{plantId}
+     * @allow (get) Any user, signed-in or not, can read a plant's details.
+     * @deny (create) An unauthenticated script attempts to create a plant.
+     * @principle Public read access for general information, with writes restricted to authenticated (even if anonymous) sessions.
+     */
+    match /plants/{plantId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
+
+      /**
+       * @description Controls access to a plant's real-time environmental data.
+       * @path /plants/{plantId}/environment_data/{environmentDataId}
+       * @allow (create) An anonymously signed-in user/device can add a new temperature reading.
+       * @deny (create) A user tries to create a data point where the internal `plantId` does not match the path.
+       * @principle Enforces relational integrity by ensuring subcollection documents correctly reference their parent.
+       */
+      match /environment_data/{environmentDataId} {
+        allow get: if true;
+        allow list: if true;
+        allow create: if isSignedIn() && isCreatingConsistentChild(plantId);
+        allow update: if isSignedIn() && resource != null && isUpdatingChild();
+        allow delete: if isSignedIn() && resource != null;
+      }
+
+      /**
+       * @description Controls access to a plant's historical watering events.
+       * @path /plants/{plantId}/watering_events/{wateringEventId}
+       * @allow (create) An anonymously signed-in user/device can log a new watering event.
+       * @deny (update) A user tries to change the `plantId` of an existing event, breaking the relationship.
+       * @principle Enforces relational integrity by ensuring subcollection documents correctly reference their parent.
+       */
+      match /watering_events/{wateringEventId} {
+        allow get: if true;
+        allow list: if true;
+        allow create: if isSignedIn() && isCreatingConsistentChild(plantId);
+        allow update: if isSignedIn() && resource != null && isUpdatingChild();
+        allow delete: if isSignedIn() && resource != null;
+      }
+
+      /**
+       * @description Controls access to a plant's historical harvesting events.
+       * @path /plants/{plantId}/harvesting_events/{harvestingEventId}
+       * @allow (create) An anonymously signed-in user/device can log a new harvesting event.
+       * @deny (delete) An unauthenticated script attempts to delete a harvest record.
+       * @principle Enforces relational integrity by ensuring subcollection documents correctly reference their parent.
+       */
+      match /harvesting_events/{harvestingEventId} {
+        allow get: if true;
+        allow list: if true;
+        allow create: if isSignedIn() && isCreatingConsistentChild(plantId);
+        allow update: if isSignedIn() && resource != null && isUpdatingChild();
+        allow delete: if isSignedIn() && resource != null;
+      }
+    }
+  }
+}
