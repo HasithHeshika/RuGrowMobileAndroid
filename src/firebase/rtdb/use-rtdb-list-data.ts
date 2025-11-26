@@ -29,7 +29,7 @@ export function useRtdbListData<T>(
   const [error, setError] = useState<Error | null>(null);
 
   const memoizedPath = useMemo(() => path, [path]);
-  const memoizedOptions = useMemo(() => JSON.stringify(options), [options]);
+  const memoizedOptions = useMemo(() => JSON.stringify(options), [Object.values(options).join(',')]);
 
   useEffect(() => {
     if (!db || !memoizedPath) {
@@ -55,10 +55,17 @@ export function useRtdbListData<T>(
       (snapshot) => {
         if (snapshot.exists()) {
           const val = snapshot.val();
-          const listData = Object.keys(val).map(key => ({
+          let listData = Object.keys(val).map(key => ({
             ...val[key],
             id: key,
           }));
+
+          // When using limitToLast, RTDB returns items in ascending order.
+          // We need to reverse the array to get the latest item first.
+          if (parsedOptions.limitToLast) {
+            listData = listData.reverse();
+          }
+          
           setData(listData);
         } else {
           setData([]);
