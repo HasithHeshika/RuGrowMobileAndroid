@@ -10,7 +10,7 @@ import { format } from "date-fns";
 import { useMemo } from "react";
 import { getDatabase, ref, push, serverTimestamp } from "firebase/database";
 import { useRtdbListData } from "@/firebase/rtdb/use-rtdb-list-data";
-import { useFirebase } from "@/firebase";
+import { useFirebase, useMemoFirebase } from "@/firebase";
 
 type MetricCardProps = {
   icon: React.ReactNode;
@@ -51,8 +51,8 @@ export function PlantDashboard({ plant }: { plant: Plant }) {
   const envDataPath = `plants/${plant.id}/environment_data`;
   const wateringEventsPath = `plants/${plant.id}/watering_events`;
 
-  const { data: envData, isLoading: isEnvLoading } = useRtdbListData<EnvironmentData>(db, envDataPath, { limitToLast: 1 });
-  const { data: wateringEvents, isLoading: isWateringLoading } = useRtdbListData<WateringEvent>(db, wateringEventsPath, { limitToLast: 1 });
+  const { data: envData, isLoading: isEnvLoading } = useRtdbListData<EnvironmentData>(db, envDataPath, { orderBy: 'timestamp', limitToLast: 1 });
+  const { data: wateringEvents, isLoading: isWateringLoading } = useRtdbListData<WateringEvent>(db, wateringEventsPath, { orderBy: 'timestamp', limitToLast: 1 });
 
   const latestEnvData = envData?.[0];
   const lastWateredEvent = wateringEvents?.[0];
