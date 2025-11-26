@@ -8,19 +8,18 @@ export interface Plant {
 }
 
 export interface EnvironmentData {
-  id: string;
   plantId: string;
   temperature: number;
   soilMoisture: number;
   relativeHumidity: number;
   absoluteHumidity: number;
   dewPoint: number;
-  timestamp: Timestamp;
+  lightLevel?: number;
+  timestamp: number; // RTDB timestamp is in milliseconds
 }
 
 export interface WateringEvent {
-  id: string;
   plantId: string;
-  timestamp: Timestamp;
+  timestamp: number; // RTDB timestamp is in milliseconds
   waterAmount: number;
 }

@@ -117,7 +117,7 @@ void setup() {
   delay(1000);
   
   Serial.println("\n╔════════════════════════════════════╗");
-  Serial.println("║   RuGrow IoT Device (Firestore)   ║");
+  Serial.println("║  RuGrow IoT - Realtime Database   ║");
   Serial.println("╚════════════════════════════════════╝\n");
   
   Serial.println("Initializing GPIO pins...");
@@ -180,7 +180,6 @@ void setup() {
   // Firebase Configuration
   config.api_key = API_KEY;
   config.database_url = DATABASE_URL;
-  config.project_id = FIREBASE_PROJECT_ID; // *** ADDED FOR FIRESTORE ***
   
   // Sign up anonymously
   Serial.println("🔑 Signing up to Firebase...");
@@ -206,30 +205,19 @@ void setup() {
 }
 
 void loop() {
-  // Read DHT22 sensor every 2 seconds
   unsigned long currentMillis = millis();
   if (currentMillis - lastSensorRead >= sensorReadInterval) {
     lastSensorRead = currentMillis;
     
-    // Read DHT22
-    float temperature = dht.readTemperature();    // Celsius
+    // Read sensors
+    float temperature = dht.readTemperature();
     float humidity = dht.readHumidity();
-    
-    // Read Soil Moisture Sensor
     int soilRaw = analogRead(SOIL_PIN);
-    int soilPercent = map(soilRaw, 4095, 0, 0, 100); // Inverted mapping
+    int soilPercent = map(soilRaw, 4095, 0, 0, 100);
     soilPercent = constrain(soilPercent, 0, 100);
+    float lux = bh1750Available ? lightMeter.readLightLevel() : -1;
     
-    // Read BH1750 Light Sensor
-    float lux = 0;
-    bool luxValid = false;
-    if (bh1750Available) {
-      lux = lightMeter.readLightLevel();
-      if (lux >= 0) {
-        luxValid = true;
-      }
-    }
-    
+    // Print readings to Serial
     Serial.println("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     Serial.println("    🌡️  SENSOR READINGS");
     Serial.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -241,66 +229,51 @@ void loop() {
     } else {
       Serial.print("  Temperature: "); Serial.print(temperature); Serial.println(" °C");
       Serial.print("  Rel Humidity: "); Serial.print(humidity); Serial.println(" %");
-
       float absoluteHumidity = calculateAbsoluteHumidity(temperature, humidity);
       Serial.print("  Abs Humidity: "); Serial.print(absoluteHumidity, 2); Serial.println(" g/m³");
-
       float dewPoint = calculateDewPoint(temperature, humidity);
       Serial.print("  Dew Point:   "); Serial.print(dewPoint); Serial.println(" °C");
     }
     
     Serial.print("  Soil Moisture: "); Serial.print(soilPercent); Serial.println(" %");
 
-    if (bh1750Available && luxValid) {
+    if (lux >= 0) {
         Serial.print("  Light Level: "); Serial.print(lux); Serial.println(" lux");
     } else {
         Serial.println("  ❌ BH1750 sensor not available");
     }
-
     Serial.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
     
-    // Send data to Firebase
+    // Send data to Firebase Realtime Database
     if (Firebase.ready() && signupOK && !isnan(temperature)) {
       if (currentMillis - lastFirebaseSend >= firebaseSendInterval) {
         lastFirebaseSend = currentMillis;
         
-        Serial.println("📤 Sending data to Cloud Firestore...");
-
-        // Parent document path in the format of "plants/{plantId}"
-        String documentPath = "plants/" + String(PLANT_ID);
-
-        // The collection id for subcollection
-        String collectionId = "environment_data";
+        Serial.println("📤 Sending data to Realtime Database...");
         
-        // Create a JSON object to hold all sensor data
-        FirebaseJson content;
-
-        float dewPoint = calculateDewPoint(temperature, humidity);
-        float absHumidity = calculateAbsoluteHumidity(temperature, humidity);
-
-        content.set("fields/plantId/stringValue", PLANT_ID);
-        content.set("fields/temperature/doubleValue", String(temperature));
-        content.set("fields/soilMoisture/integerValue", String(soilPercent));
-        content.set("fields/relativeHumidity/doubleValue", String(humidity));
-        content.set("fields/absoluteHumidity/doubleValue", String(absHumidity));
-        content.set("fields/dewPoint/doubleValue", String(dewPoint));
-        if (luxValid) {
-          content.set("fields/lightLevel/doubleValue", String(lux));
+        // Path to push new environment data
+        String path = "plants/" + String(PLANT_ID) + "/environment_data";
+        
+        FirebaseJson json;
+        json.set("plantId", PLANT_ID);
+        json.set("temperature", temperature);
+        json.set("soilMoisture", soilPercent);
+        json.set("relativeHumidity", humidity);
+        json.set("absoluteHumidity", calculateAbsoluteHumidity(temperature, humidity));
+        json.set("dewPoint", calculateDewPoint(temperature, humidity));
+        if (lux >= 0) {
+          json.set("lightLevel", lux);
         }
-        content.set("fields/timestamp/timestampValue", ""); // Let Firestore set the timestamp
-        
-        // Create a new document in the subcollection.
-        // The document ID will be assigned automatically by Firestore if the document ID is left empty.
-        if (Firebase.Firestore.createDocument(&fbdo, FIREBASE_PROJECT_ID, "(default)" /* databaseId */, documentPath.c_str(), collectionId.c_str(), content.raw(), "" /* documentId */)) {
-            Serial.print("   ✓ Firestore document created successfully at path: ");
-            Serial.println(fbdo.payload().c_str());
+        json.set("timestamp/.sv", "timestamp"); // Server-side timestamp
+
+        if (Firebase.RTDB.pushJSON(&fbdo, path.c_str(), &json)) {
+            Serial.print("   ✓ RTDB push successful. Key: ");
+            Serial.println(fbdo.pushName());
         } else {
-            Serial.print("   ❌ Failed to create Firestore document: ");
-            Serial.println(fbdo.errorReason().c_str());
+            Serial.print("   ❌ RTDB push failed: ");
+            Serial.println(fbdo.errorReason());
         }
       }
     }
   }
 }
-
-    

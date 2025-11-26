@@ -4,12 +4,13 @@ import type { Plant, EnvironmentData, WateringEvent } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Thermometer, Droplets, Droplet, Wind, Cloud, Waves } from "lucide-react";
+import { Thermometer, Droplets, Droplet, Wind, Cloud, Waves, Sun } from "lucide-react";
 import { PepperIcon } from "@/components/icons/pepper-icon";
 import { format } from "date-fns";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, query, orderBy, limit, serverTimestamp } from "firebase/firestore";
-import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { useMemo } from "react";
+import { getDatabase, ref, push, serverTimestamp } from "firebase/database";
+import { useRtdbListData } from "@/firebase/rtdb/use-rtdb-list-data";
+import { useFirebase } from "@/firebase";
 
 type MetricCardProps = {
   icon: React.ReactNode;
@@ -31,7 +32,7 @@ const MetricCard = ({ icon, title, value, unit, loading }: MetricCardProps) => (
       ) : (
         <div className="text-2xl font-bold">
           {value ?? 'N/A'}
-          {unit && value !== undefined && (
+          {unit && value !== undefined && value !== 'N/A' && (
             <span className="text-xs font-normal text-muted-foreground ml-1">
               {unit}
             </span>
@@ -44,36 +45,22 @@ const MetricCard = ({ icon, title, value, unit, loading }: MetricCardProps) => (
 
 export function PlantDashboard({ plant }: { plant: Plant }) {
   const { toast } = useToast();
-  const firestore = useFirestore();
+  const { firebaseApp } = useFirebase();
+  const db = useMemo(() => firebaseApp ? getDatabase(firebaseApp) : null, [firebaseApp]);
 
-  const environmentDataQuery = useMemoFirebase(() => {
-    if (!firestore || !plant.id) return null;
-    return query(
-      collection(firestore, `plants/${plant.id}/environment_data`),
-      orderBy("timestamp", "desc"),
-      limit(1)
-    );
-  }, [firestore, plant.id]);
+  const envDataPath = `plants/${plant.id}/environment_data`;
+  const wateringEventsPath = `plants/${plant.id}/watering_events`;
 
-  const wateringEventsQuery = useMemoFirebase(() => {
-    if (!firestore || !plant.id) return null;
-    return query(
-      collection(firestore, `plants/${plant.id}/watering_events`),
-      orderBy("timestamp", "desc"),
-      limit(1)
-    );
-  }, [firestore, plant.id]);
-
-  const { data: envData, isLoading: isEnvLoading } = useCollection<EnvironmentData>(environmentDataQuery);
-  const { data: wateringEvents, isLoading: isWateringLoading } = useCollection<WateringEvent>(wateringEventsQuery);
+  const { data: envData, isLoading: isEnvLoading } = useRtdbListData<EnvironmentData>(db, envDataPath, { limitToLast: 1 });
+  const { data: wateringEvents, isLoading: isWateringLoading } = useRtdbListData<WateringEvent>(db, wateringEventsPath, { limitToLast: 1 });
 
   const latestEnvData = envData?.[0];
   const lastWateredEvent = wateringEvents?.[0];
 
   const handleWaterPlant = () => {
-    if (!firestore || !plant.id) return;
-    const wateringEventsCollection = collection(firestore, `plants/${plant.id}/watering_events`);
-    addDocumentNonBlocking(wateringEventsCollection, {
+    if (!db || !plant.id) return;
+    const wateringEventsRef = ref(db, `plants/${plant.id}/watering_events`);
+    push(wateringEventsRef, {
       plantId: plant.id,
       timestamp: serverTimestamp(),
       waterAmount: 250 // Example amount in ml
@@ -87,12 +74,17 @@ export function PlantDashboard({ plant }: { plant: Plant }) {
 
   const lastHarvestedDate = new Date(); // Placeholder
 
+  const formatTimestamp = (timestamp: number | undefined) => {
+    if (!timestamp) return "Never";
+    return format(new Date(timestamp), "MMM d, h:mm a");
+  }
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="grid gap-4 md:grid-cols-3 grid-cols-2">
         <MetricCard
           title="Temperature"
-          value={latestEnvData?.temperature}
+          value={latestEnvData?.temperature?.toFixed(1)}
           unit="°C"
           icon={<Thermometer className="h-4 w-4 text-muted-foreground" />}
           loading={isEnvLoading}
@@ -105,29 +97,36 @@ export function PlantDashboard({ plant }: { plant: Plant }) {
           loading={isEnvLoading}
         />
          <MetricCard
-          title="Relative Humidity"
-          value={latestEnvData?.relativeHumidity}
+          title="Rel. Humidity"
+          value={latestEnvData?.relativeHumidity?.toFixed(1)}
           unit="%"
           icon={<Wind className="h-4 w-4 text-muted-foreground" />}
           loading={isEnvLoading}
         />
         <MetricCard
-          title="Absolute Humidity"
-          value={latestEnvData?.absoluteHumidity}
+          title="Abs. Humidity"
+          value={latestEnvData?.absoluteHumidity?.toFixed(2)}
           unit="g/m³"
           icon={<Cloud className="h-4 w-4 text-muted-foreground" />}
           loading={isEnvLoading}
         />
         <MetricCard
           title="Dew Point"
-          value={latestEnvData?.dewPoint}
+          value={latestEnvData?.dewPoint?.toFixed(1)}
           unit="°C"
           icon={<Waves className="h-4 w-4 text-muted-foreground" />}
           loading={isEnvLoading}
         />
         <MetricCard
+          title="Light Level"
+          value={latestEnvData?.lightLevel}
+          unit="lux"
+          icon={<Sun className="h-4 w-4 text-muted-foreground" />}
+          loading={isEnvLoading}
+        />
+        <MetricCard
           title="Last Watered"
-          value={lastWateredEvent?.timestamp ? format(lastWateredEvent.timestamp.toDate(), "MMM d, h:mm a") : "Never"}
+          value={formatTimestamp(lastWateredEvent?.timestamp)}
           icon={<Droplet className="h-4 w-4 text-muted-foreground" />}
           loading={isWateringLoading}
         />
