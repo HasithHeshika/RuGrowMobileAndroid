@@ -279,13 +279,13 @@ void loop() {
         float absHumidity = calculateAbsoluteHumidity(temperature, humidity);
 
         content.set("fields/plantId/stringValue", PLANT_ID);
-        content.set("fields/temperature/doubleValue", String(temperature));
-        content.set("fields/soilMoisture/integerValue", String(soilPercent));
-        content.set("fields/relativeHumidity/doubleValue", String(humidity));
-        content.set("fields/absoluteHumidity/doubleValue", String(absHumidity));
-        content.set("fields/dewPoint/doubleValue", String(dewPoint));
+        content.set("fields/temperature/doubleValue", temperature);
+        content.set("fields/soilMoisture/integerValue", soilPercent);
+        content.set("fields/relativeHumidity/doubleValue", humidity);
+        content.set("fields/absoluteHumidity/doubleValue", absHumidity);
+        content.set("fields/dewPoint/doubleValue", dewPoint);
         if (luxValid) {
-          content.set("fields/lightLevel/doubleValue", String(lux));
+          content.set("fields/lightLevel/doubleValue", lux);
         }
         content.set("fields/timestamp/timestampValue", fbdo.meta.timestamp);
         
