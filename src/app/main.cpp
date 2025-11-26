@@ -13,9 +13,9 @@
 #define WIFI_PASSWORD "CB465bEF"
 
 // Firebase Credentials
-#define API_KEY "AIzaSyDWuV47g8p2qNS0uQTNFpYTc2666NteSZI"
-#define DATABASE_URL "https://rugrow-iot-default-rtdb.asia-southeast1.firebasedatabase.app/"
-#define FIREBASE_PROJECT_ID "rugrow-iot"
+#define API_KEY "AIzaSyB1V0T46PDfrwHJfHxKlMPBFqV_nhn8zfc"
+#define DATABASE_URL "https://studio-8834724498-f8cc4-default-rtdb.asia-southeast1.firebasedatabase.app/"
+#define FIREBASE_PROJECT_ID "studio-8834724498-f8cc4"
 
 // --- IMPORTANT ---
 // PLANT ID from Firestore
