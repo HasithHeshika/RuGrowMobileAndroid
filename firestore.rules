@@ -19,7 +19,7 @@ service cloud.firestore {
 // This is suitable for this demo app but should be secured for production.
 {
   "rules": {
-    ".read": "true",
-    ".write": "true"
+    ".read": true,
+    ".write": true
   }
 }
