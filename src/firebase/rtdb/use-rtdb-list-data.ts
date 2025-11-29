@@ -62,7 +62,7 @@ export function useRtdbListData<T>(
 
           // When using limitToLast, RTDB returns items in ascending order.
           // We need to reverse the array to get the latest item first.
-          if (parsedOptions.limitToLast) {
+          if (parsedOptions.limitToLast && listData.length > 1) {
             listData = listData.reverse();
           }
           
